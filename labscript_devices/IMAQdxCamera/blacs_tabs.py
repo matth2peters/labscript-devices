@@ -102,7 +102,7 @@ class ImageReceiver(ZMQServer):
         # and not for the Qt event loop as a whole. In any case, this seems to fix it.
         # Manually calling this is usually a sign of bad coding, but I think it is the
         # right solution to this problem. This solves issue #36.
-        QtGui.QApplication.instance().sendPostedEvents()
+        #QtGui.QApplication.instance().sendPostedEvents()
         return self.NO_RESPONSE
 
 
@@ -141,9 +141,9 @@ class IMAQdxCameraTab(DeviceTab):
 
         layout.addWidget(self.ui)
         self.image = pg.ImageView()
-        self.image.setSizePolicy(
-            QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding
-        )
+        # self.image.setSizePolicy(
+        #     QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Expanding
+        # )
         self.ui.horizontalLayout.addWidget(self.image)
         self.ui.pushButton_stop.hide()
         self.ui.doubleSpinBox_maxrate.hide()

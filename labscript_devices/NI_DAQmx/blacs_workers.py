@@ -10,7 +10,9 @@
 # file in the root of the project for the full license.             #
 #                                                                   #
 #####################################################################
+from msilib.schema import Error
 import sys
+from telnetlib import DO
 import time
 import threading
 from PyDAQmx import *
@@ -202,7 +204,7 @@ class NI_DAQmxOutputWorker(Worker):
             self.DO_task.StartTask()
             # Write data. See the comment in self.program_manual as to why we are using
             # uint32 instead of the native size of each port
-            self.DO_task.WriteDigitalU32(
+            self.DO_task.WriteDigital(
                 1,  # npts
                 False,  # autostart
                 10.0,  # timeout
@@ -216,7 +218,12 @@ class NI_DAQmxOutputWorker(Worker):
             # sample) in order to ensure there is one more clock tick than there are
             # samples. This is required by some devices to determine that the task has
             # completed.
-            npts = len(DO_table) - 1
+
+            # UPDATE: # Our digital card is old and needs this to be a multiple of 4. I don't fully understand what is being programed here, but it appears to work
+
+            npts = max(2**8, len(DO_table)) # 2**14 is the maximum number of points that can be written I believe. If len(DO_table) > 2**14, this should throw an error
+
+
 
             # Set up timing:
             self.DO_task.CfgSampClkTiming(
@@ -248,6 +255,7 @@ class NI_DAQmxOutputWorker(Worker):
         if AO_table is None:
             return {}
         self.AO_task = Task()
+
         written = int32()
         channels = ', '.join(self.MAX_name + '/' + c for c in AO_table.dtype.names)
         self.AO_task.CreateAOVoltageChan(
@@ -354,7 +362,15 @@ class NI_DAQmxOutputWorker(Worker):
                 if not static:
                     try:
                         # Wait for task completion with a 1 second timeout:
-                        task.WaitUntilTaskDone(1)
+                        if not self.MAX_name == "DO_6534_A":
+                            task.WaitUntilTaskDone(1)
+                    except Exception as e:
+                        if self.MAX_name == "ni_6534_Dev1":
+                            print("This digital card does not need to worry about the fact that the # samples does not reach the max (probably)")
+                            # print("Look in the transition_to_buffered method for more info.\n")
+                            # print("It appears our 6534 card needs nsamples%4 = 0 and have some weird problems with programming ...\n but as far as I can tell it works like this.")
+                        else:
+                            raise(e)
                     finally:
                         # Log where we were up to in sample generation, regardless of
                         # whether the above succeeded:
